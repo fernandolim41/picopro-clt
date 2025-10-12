@@ -290,4 +290,4 @@ Para dúvidas ou suporte:
 
 ---
 
-**Picopro** - Transformando a economia gig em trabalho legal e seguro! 🚀
+**Picopro** - Transformando a economia gig em trabalho legal e seguro! 
