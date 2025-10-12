@@ -152,21 +152,7 @@ export const convocations = {
   }
 }
 
-// Funções para geolocalização e match
-export const matching = {
-  findNearbyProfessionals: async (latitude, longitude, skill, radiusKm = 10) => {
-    // Esta função seria implementada como uma Edge Function no Supabase
-    // Por enquanto, vamos simular com uma query básica
-    const { data, error } = await supabase
-      .from('professionals')
-      .select('*, profiles(*)')
-      .eq('is_available', true)
-      .contains('skills', [skill])
-    
-    // Filtro de distância seria implementado no backend/Edge Function
-    return { data, error }
-  }
-}
+
 
 // Funções para notificações em tempo real
 export const realtime = {

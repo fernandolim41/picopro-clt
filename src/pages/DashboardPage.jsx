@@ -17,95 +17,114 @@ import {
   AlertCircle
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { supabase } from '../services/supabase'
 
 const DashboardPage = () => {
   const { user, profile, isCompany, isProfessional } = useAuth()
-  const [stats, setStats] = useState(null)
+  const [stats, setStats] = useState({})
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simular carregamento de dados
     const loadDashboardData = async () => {
       try {
-        // Aqui você faria as chamadas reais para a API
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        if (isCompany) {
+        if (isCompany && profile?.id) {
+          // Dados reais para empresas
+          const { data: jobsData, error: jobsError } = await supabase.from('jobs').select('id, status, created_at, company_id').eq('company_id', profile.id);
+          if (jobsError) throw jobsError;
+
+          const totalJobs = jobsData.length;
+          const activeJobs = jobsData.filter(job => job.status === 'open' || job.status === 'matching').length;
+
+          const { data: convocationsData, error: convocationsError } = await supabase.from('convocations').select('id, status, created_at, job_id, professional_id').in('job_id', jobsData.map(job => job.id));
+          if (convocationsError) throw convocationsError;
+
+          const totalHires = convocationsData.filter(conv => conv.status === 'accepted' || conv.status === 'completed').length;
+
+          // Simulação de tempo médio de resposta (precisaria de mais lógica para ser real)
+          const avgResponseTime = '15 min'; 
+
           setStats({
-            totalJobs: 12,
-            activeJobs: 3,
-            totalHires: 45,
-            avgResponseTime: '15 min'
-          })
-          
-          setRecentActivity([
-            {
-              id: 1,
+            totalJobs,
+            activeJobs,
+            totalHires,
+            avgResponseTime
+          });
+
+          const recentCompanyActivity = [];
+          jobsData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3).forEach(job => {
+            recentCompanyActivity.push({
+              id: `job-${job.id}`,
               type: 'job_created',
               title: 'Nova vaga criada',
-              description: 'Cozinheiro - Restaurante Centro',
-              time: '2 horas atrás',
+              description: `Vaga ID: ${job.id}`,
+              time: `${Math.floor((Date.now() - new Date(job.created_at).getTime()) / (1000 * 60 * 60))} horas atrás`,
               status: 'active'
-            },
-            {
-              id: 2,
-              type: 'convocation_accepted',
-              title: 'Convocação aceita',
-              description: 'João Silva aceitou a vaga de Garçom',
-              time: '4 horas atrás',
-              status: 'success'
-            },
-            {
-              id: 3,
-              type: 'job_completed',
-              title: 'Trabalho concluído',
-              description: 'Maria Santos - Auxiliar de Limpeza',
-              time: '1 dia atrás',
-              status: 'completed'
+            });
+          });
+          convocationsData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3).forEach(conv => {
+            if (conv.status === 'accepted') {
+              recentCompanyActivity.push({
+                id: `conv-${conv.id}`,
+                type: 'convocation_accepted',
+                title: 'Convocação aceita',
+                description: `Profissional ID: ${conv.professional_id} aceitou vaga ID: ${conv.job_id}`,
+                time: `${Math.floor((Date.now() - new Date(conv.created_at).getTime()) / (1000 * 60 * 60))} horas atrás`,
+                status: 'success'
+              });
             }
-          ])
-        } else {
-          setStats({
-            totalConvocations: 8,
-            acceptedConvocations: 6,
-            totalEarnings: 1250.00,
-            avgRating: 4.8
-          })
+          });
+          setRecentActivity(recentCompanyActivity.sort((a, b) => new Date(b.time.split(' ')[0]) - new Date(a.time.split(' ')[0])).slice(0, 3));
+
+        } else if (isProfessional && profile?.id) {
+          // Dados reais para profissionais
+          const { data: convocationsData, error: convocationsError } = await supabase.from('convocations').select('id, status, created_at, hourly_rate').eq('professional_id', profile.id);
+          if (convocationsError) throw convocationsError;
+
+          const totalConvocations = convocationsData.length;
+          const acceptedConvocations = convocationsData.filter(conv => conv.status === 'accepted').length;
+          const totalEarnings = convocationsData.filter(conv => conv.status === 'completed' && conv.hourly_rate).reduce((sum, conv) => sum + conv.hourly_rate, 0);
           
-          setRecentActivity([
-            {
-              id: 1,
-              type: 'new_convocation',
-              title: 'Nova convocação',
-              description: 'Cozinheiro - Restaurante Italiano',
-              time: '30 min atrás',
-              status: 'pending'
-            },
-            {
-              id: 2,
-              type: 'payment_received',
-              title: 'Pagamento recebido',
-              description: 'R$ 180,00 - Trabalho de 6h',
-              time: '2 horas atrás',
-              status: 'success'
-            },
-            {
-              id: 3,
-              type: 'work_completed',
-              title: 'Trabalho concluído',
-              description: 'Garçom - Evento Corporativo',
-              time: '1 dia atrás',
-              status: 'completed'
+          // Simulação de avaliação média (precisaria de um sistema de avaliação real)
+          const avgRating = 4.8;
+
+          setStats({
+            totalConvocations,
+            acceptedConvocations,
+            totalEarnings,
+            avgRating
+          });
+
+          const recentProfessionalActivity = [];
+          convocationsData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3).forEach(conv => {
+            if (conv.status === 'pending') {
+              recentProfessionalActivity.push({
+                id: `conv-${conv.id}`,
+                type: 'new_convocation',
+                title: 'Nova convocação',
+                description: `Vaga ID: ${conv.job_id}`,
+                time: `${Math.floor((Date.now() - new Date(conv.created_at).getTime()) / (1000 * 60 * 60))} horas atrás`,
+                status: 'pending'
+              });
+            } else if (conv.status === 'completed') {
+              recentProfessionalActivity.push({
+                id: `conv-${conv.id}`,
+                type: 'work_completed',
+                title: 'Trabalho concluído',
+                description: `Vaga ID: ${conv.job_id} - Ganhos: R$ ${conv.hourly_rate || 0}`,
+                time: `${Math.floor((Date.now() - new Date(conv.created_at).getTime()) / (1000 * 60 * 60))} horas atrás`,
+                status: 'completed'
+              });
             }
-          ])
+          });
+          setRecentActivity(recentProfessionalActivity.sort((a, b) => new Date(b.time.split(' ')[0]) - new Date(a.time.split(' ')[0])).slice(0, 3));
         }
       } catch (error) {
-        console.error('Erro ao carregar dados do dashboard:', error)
+        console.error('Erro ao carregar dados do dashboard:', error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     loadDashboardData()
   }, [isCompany])
@@ -236,10 +255,10 @@ const DashboardPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {Math.round((stats.acceptedConvocations / stats.totalConvocations) * 100)}%
+                  {stats.totalConvocations > 0 ? Math.round((stats.acceptedConvocations / stats.totalConvocations) * 100) : 0}%
                 </div>
                 <Progress 
-                  value={(stats.acceptedConvocations / stats.totalConvocations) * 100} 
+                  value={stats.totalConvocations > 0 ? (stats.acceptedConvocations / stats.totalConvocations) * 100 : 0} 
                   className="mt-2"
                 />
               </CardContent>

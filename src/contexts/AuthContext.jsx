@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { auth, profiles } from '../services/supabase'
+import { auth, profiles, supabase } from '../services/supabase'
 
 const AuthContext = createContext({})
 
@@ -49,14 +49,43 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      const { data, error } = await profiles.getProfile(userId)
-      if (error) {
-        console.error('Erro ao carregar perfil:', error)
+      const { data: profileData, error: profileError } = await profiles.getProfile(userId)
+      if (profileError) {
+        console.error("Erro ao carregar perfil básico:", profileError)
         return
       }
-      setProfile(data)
+
+      let fullProfile = { ...profileData }
+
+      // Verificar se é uma empresa
+      const { data: companyData, error: companyError } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("profile_id", userId)
+        .single()
+
+      if (companyData) {
+        fullProfile = { ...fullProfile, ...companyData, is_company: true }
+      } else if (companyError && companyError.code !== "PGRST116") { // PGRST116 = no rows found
+        console.error("Erro ao carregar perfil da empresa:", companyError)
+      }
+
+      // Verificar se é um profissional
+      const { data: professionalData, error: professionalError } = await supabase
+        .from("professionals")
+        .select("*")
+        .eq("profile_id", userId)
+        .single()
+
+      if (professionalData) {
+        fullProfile = { ...fullProfile, ...professionalData, is_professional: true }
+      } else if (professionalError && professionalError.code !== "PGRST116") { // PGRST116 = no rows found
+        console.error("Erro ao carregar perfil do profissional:", professionalError)
+      }
+      
+      setProfile(fullProfile)
     } catch (error) {
-      console.error('Erro ao carregar perfil:', error)
+      console.error("Erro ao carregar perfil completo:", error)
     }
   }
 
@@ -68,6 +97,9 @@ export const AuthProvider = ({ children }) => {
       if (error) {
         throw error
       }
+
+      // Define o usuário manualmente para evitar condição de concorrência
+      setUser(data.user)
 
       return { data, error: null }
     } catch (error) {
@@ -144,8 +176,8 @@ export const AuthProvider = ({ children }) => {
         throw error
       }
 
-      // Atualizar o perfil para indicar que é uma empresa
-      await updateProfile({ is_company: true })
+      // Recarregar o perfil completo para incluir os dados da empresa
+      await loadUserProfile(user.id)
       
       return { data, error: null }
     } catch (error) {
@@ -165,8 +197,8 @@ export const AuthProvider = ({ children }) => {
         throw error
       }
 
-      // Atualizar o perfil para indicar que é um profissional
-      await updateProfile({ is_company: false })
+      // Recarregar o perfil completo para incluir os dados do profissional
+      await loadUserProfile(user.id)
       
       return { data, error: null }
     } catch (error) {
@@ -185,7 +217,7 @@ export const AuthProvider = ({ children }) => {
     createCompanyProfile,
     createProfessionalProfile,
     isCompany: profile?.is_company || false,
-    isProfessional: profile?.is_company === false
+    isProfessional: profile?.is_professional || false
   }
 
   return (

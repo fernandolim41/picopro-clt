@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, ArrowLeft, Building, User } from 'lucide-react'
 import { validateCPF, validateCNPJ, formatCPF, formatCNPJ, formatPhone } from '../utils/helpers'
+import { supabase } from '../services/supabase'
 
 const RegisterPage = () => {
   const [activeTab, setActiveTab] = useState('professional')
