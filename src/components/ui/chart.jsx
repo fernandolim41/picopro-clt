@@ -1,6 +1,5 @@
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
-
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -13,11 +12,9 @@ const ChartContext = React.createContext(null)
 
 function useChart() {
   const context = React.useContext(ChartContext)
-
   if (!context) {
     throw new Error("useChart must be used within a <ChartContainer />")
   }
-
   return context
 }
 
@@ -47,18 +44,12 @@ function ChartContainer({
         </RechartsPrimitive.ResponsiveContainer>
       </div>
     </ChartContext.Provider>
-  );
+  )
 }
 
-const ChartStyle = ({
-  id,
-  config
-}) => {
+const ChartStyle = ({ id, config }) => {
   const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color)
-
-  if (!colorConfig.length) {
-    return null
-  }
+  if (!colorConfig.length) return null
 
   return (
     <style
@@ -67,18 +58,17 @@ const ChartStyle = ({
           .map(([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
-              .map(([key, itemConfig]) => {
-                const color =
-                  itemConfig.theme?.[theme] ||
-                  itemConfig.color
-                return color ? `  --color-${key}: ${color};` : null
-              })
-              .join("\n")}
+  .map(([key, itemConfig]) => {
+    const color =
+      itemConfig.theme?.[theme] || itemConfig.color
+    return color ? `  --color-${key}: ${color};` : null
+  })
+  .join("\n")}
 }
-`)
-          .join("\n"),
-      }} />
-  );
+`).join("\n"),
+      }}
+    />
+  )
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
@@ -100,10 +90,11 @@ function ChartTooltipContent({
 }) {
   const { config } = useChart()
 
+  // se o payload for vazio, evita erro
+  if (!active || !payload?.length) return null
+
   const tooltipLabel = React.useMemo(() => {
-    if (hideLabel || !payload?.length) {
-      return null
-    }
+    if (hideLabel || !payload?.length) return null
 
     const [item] = payload
     const key = `${labelKey || item?.dataKey || item?.name || "value"}`
@@ -118,27 +109,12 @@ function ChartTooltipContent({
         <div className={cn("font-medium", labelClassName)}>
           {labelFormatter(value, payload)}
         </div>
-      );
+      )
     }
 
-    if (!value) {
-      return null
-    }
-
-    return <div className={cn("font-medium", labelClassName)}>{value}</div>;
-  }, [
-    label,
-    labelFormatter,
-    payload,
-    hideLabel,
-    labelClassName,
-    config,
-    labelKey,
-  ])
-
-  if (!active || !payload?.length) {
-    return null
-  }
+    if (!value) return null
+    return <div className={cn("font-medium", labelClassName)}>{value}</div>
+  }, [label, labelFormatter, payload, hideLabel, labelClassName, config, labelKey])
 
   const nestLabel = payload.length === 1 && indicator !== "dot"
 
@@ -153,11 +129,14 @@ function ChartTooltipContent({
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
-          const indicatorColor = color || item.payload.fill || item.color
+          const indicatorColor = color || item.payload?.fill || item.color
+
+          // Proteção extra: evita tentar renderizar valores undefined
+          const valueSafe = item?.value ?? ""
 
           return (
             <div
-              key={item.dataKey}
+              key={item.dataKey || index}
               className={cn(
                 "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center"
@@ -178,12 +157,11 @@ function ChartTooltipContent({
                             indicator === "dashed",
                           "my-0.5": nestLabel && indicator === "dashed",
                         })}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor
-                          }
-                        } />
+                        style={{
+                          "--color-bg": indicatorColor,
+                          "--color-border": indicatorColor
+                        }}
+                      />
                     )
                   )}
                   <div
@@ -197,24 +175,20 @@ function ChartTooltipContent({
                         {itemConfig?.label || item.name}
                       </span>
                     </div>
-                    {typeof item.value === "number" ? (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
-                        {item.value.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
-                        {item.value ?? ""}
-                      </span>
-                    )}
+                    <span className="text-foreground font-mono font-medium tabular-nums">
+                      {typeof valueSafe === "number"
+                        ? valueSafe?.toLocaleString?.()
+                        : valueSafe}
+                    </span>
                   </div>
                 </>
               )}
             </div>
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }
 
 const ChartLegend = RechartsPrimitive.Legend
@@ -228,9 +202,7 @@ function ChartLegendContent({
 }) {
   const { config } = useChart()
 
-  if (!payload?.length) {
-    return null
-  }
+  if (!payload?.length) return null
 
   return (
     <div
@@ -256,51 +228,35 @@ function ChartLegendContent({
                 className="h-2 w-2 shrink-0 rounded-[2px]"
                 style={{
                   backgroundColor: item.color,
-                }} />
+                }}
+              />
             )}
             {itemConfig?.label}
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
-// Helper to extract item config from a payload.
-function getPayloadConfigFromPayload(
-  config,
-  payload,
-  key
-) {
-  if (typeof payload !== "object" || payload === null) {
-    return undefined
-  }
+// Helper para obter a configuração de item a partir do payload
+function getPayloadConfigFromPayload(config, payload, key) {
+  if (typeof payload !== "object" || payload === null) return undefined
 
   const payloadPayload =
-    "payload" in payload &&
-      typeof payload.payload === "object" &&
-      payload.payload !== null
+    "payload" in payload && typeof payload.payload === "object" && payload.payload !== null
       ? payload.payload
       : undefined
 
   let configLabelKey = key
 
-  if (
-    key in payload &&
-    typeof payload[key] === "string"
-  ) {
+  if (key in payload && typeof payload[key] === "string") {
     configLabelKey = payload[key]
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key] === "string"
-  ) {
+  } else if (payloadPayload && key in payloadPayload && typeof payloadPayload[key] === "string") {
     configLabelKey = payloadPayload[key]
   }
 
-  return configLabelKey in config
-    ? config[configLabelKey]
-    : config[key];
+  return configLabelKey in config ? config[configLabelKey] : config[key]
 }
 
 export {
