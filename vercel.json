@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    { "source": "/dashboard", "destination": "/" },
-    { "source": "/profile", "destination": "/" },
-    { "source": "/jobs", "destination": "/" },
-    { "source": "/convocations", "destination": "/" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
+
