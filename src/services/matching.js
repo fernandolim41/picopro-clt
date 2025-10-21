@@ -20,12 +20,11 @@ export const matchingService = {
           *,
           profiles (*)
         `)
-        .eq('is_available', true)
-        .contains('skills', [job.required_skill])
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
-
-      if (error) {
+        .eq(\'is_available\', true)
+        .contains(\'skills\', [job.required_skill])
+        .not(\'latitude\', \'is\', null)
+        .not(\'longitude\', \'is\', null)
+        .limit(50) // Limitar o número de profissionais retornados inicialmenteerror) {
         throw error
       }
 
@@ -180,14 +179,12 @@ export const matchingService = {
         throw new Error('Localização do profissional não definida')
       }
 
-      // Buscar vagas abertas
-      const { data: jobs, error: jobsError } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('status', 'open')
-        .in('required_skill', professional.skills || [])
-
-      if (jobsError) {
+      // Buscar vagas abertas      const { data: jobs, error: jobsError } = await supabase
+        .from(\'jobs\')
+        .select(\'*\')
+        .eq(\'status\', \'open\')
+        .in(\'required_skill\', professional.skills || [])
+        .limit(50) // Limitar o número de vagas retornadas inicialmentef (jobsError) {
         throw jobsError
       }
 
