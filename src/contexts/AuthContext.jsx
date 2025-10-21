@@ -57,29 +57,32 @@ export const AuthProvider = ({ children }) => {
 
       let fullProfile = { ...profileData }
 
-      // Verificar se é uma empresa
+      // Carregar dados de empresa ou profissional em uma única consulta, se possível, ou de forma mais eficiente.
+      // Para otimizar, vamos buscar os dois tipos de perfil e consolidar.
       const { data: companyData, error: companyError } = await supabase
         .from("companies")
         .select("*")
         .eq("profile_id", userId)
-        .single()
+        .maybeSingle() // Usar maybeSingle para evitar erro se não encontrar
 
       if (companyData) {
         fullProfile = { ...fullProfile, ...companyData, is_company: true }
-      } else if (companyError && companyError.code !== "PGRST116") { // PGRST116 = no rows found
-        console.error("Erro ao carregar perfil da empresa:", companyError)
       }
 
-      // Verificar se é um profissional
       const { data: professionalData, error: professionalError } = await supabase
         .from("professionals")
         .select("*")
         .eq("profile_id", userId)
-        .single()
+        .maybeSingle() // Usar maybeSingle para evitar erro se não encontrar
 
       if (professionalData) {
         fullProfile = { ...fullProfile, ...professionalData, is_professional: true }
-      } else if (professionalError && professionalError.code !== "PGRST116") { // PGRST116 = no rows found
+      }
+
+      if (companyError && companyError.code !== "PGRST116") {
+        console.error("Erro ao carregar perfil da empresa:", companyError)
+      }
+      if (professionalError && professionalError.code !== "PGRST116") {
         console.error("Erro ao carregar perfil do profissional:", professionalError)
       }
       
