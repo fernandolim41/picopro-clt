@@ -20,11 +20,13 @@ export const matchingService = {
           *,
           profiles (*)
         `)
-        .eq(\'is_available\', true)
-        .contains(\'skills\', [job.required_skill])
-        .not(\'latitude\', \'is\', null)
-        .not(\'longitude\', \'is\', null)
-        .limit(50) // Limitar o número de profissionais retornados inicialmenteerror) {
+        .eq('is_available', true)
+        .contains('skills', [job.required_skill])
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(50)
+
+      if (error) {
         throw error
       }
 
@@ -37,9 +39,9 @@ export const matchingService = {
       )
 
       // Adicionar score de compatibilidade
-      const scoredProfessionals = nearbyProfessionals.map(professional => ({
+      const scoredProfessionals = nearbyProfessionals.map((professional) => ({
         ...professional,
-        matchScore: this.calculateMatchScore(professional, job)
+        matchScore: this.calculateMatchScore(professional, job),
       }))
 
       // Ordenar por score de compatibilidade
@@ -64,19 +66,23 @@ export const matchingService = {
       score += 40
     }
 
-    // Bonus por proximidade (quanto mais próximo, maior o score)
+    // Bônus por proximidade (quanto mais próximo, maior o score)
     const maxDistance = 20 // km
-    const distanceScore = Math.max(0, (maxDistance - professional.distance) / maxDistance * 30)
+    const distanceScore = Math.max(
+      0,
+      ((maxDistance - professional.distance) / maxDistance) * 30
+    )
     score += distanceScore
 
-    // Bonus por habilidades adicionais relacionadas
+    // Bônus por habilidades adicionais relacionadas
     const relatedSkills = this.getRelatedSkills(job.required_skill)
-    const additionalSkills = professional.skills?.filter(skill => 
-      relatedSkills.includes(skill) && skill !== job.required_skill
-    ) || []
+    const additionalSkills =
+      professional.skills?.filter(
+        (skill) => relatedSkills.includes(skill) && skill !== job.required_skill
+      ) || []
     score += Math.min(additionalSkills.length * 5, 20)
 
-    // Bonus por certificações
+    // Bônus por certificações
     if (professional.certifications?.length > 0) {
       score += Math.min(professional.certifications.length * 3, 10)
     }
@@ -91,12 +97,12 @@ export const matchingService = {
    */
   getRelatedSkills(skill) {
     const skillGroups = {
-      'Cozinheiro': ['Auxiliar de Cozinha', 'Chef', 'Confeiteiro', 'Pizzaiolo'],
-      'Garçom': ['Atendimento', 'Barista', 'Sommelier', 'Recepcionista'],
-      'Limpeza': ['Auxiliar de Limpeza', 'Faxineiro', 'Zelador'],
-      'Logística': ['Estoquista', 'Conferente', 'Operador de Empilhadeira'],
-      'Atendimento': ['Vendedor', 'Recepcionista', 'Telemarketing', 'Garçom'],
-      'Segurança': ['Porteiro', 'Vigilante', 'Controlador de Acesso']
+      Cozinheiro: ['Auxiliar de Cozinha', 'Chef', 'Confeiteiro', 'Pizzaiolo'],
+      Garçom: ['Atendimento', 'Barista', 'Sommelier', 'Recepcionista'],
+      Limpeza: ['Auxiliar de Limpeza', 'Faxineiro', 'Zelador'],
+      Logística: ['Estoquista', 'Conferente', 'Operador de Empilhadeira'],
+      Atendimento: ['Vendedor', 'Recepcionista', 'Telemarketing', 'Garçom'],
+      Segurança: ['Porteiro', 'Vigilante', 'Controlador de Acesso'],
     }
 
     return skillGroups[skill] || []
@@ -113,7 +119,7 @@ export const matchingService = {
     try {
       // Pegar os melhores profissionais
       const selectedProfessionals = professionals.slice(0, maxConvocations)
-      
+
       // Buscar dados da vaga
       const { data: job, error: jobError } = await supabase
         .from('jobs')
@@ -126,12 +132,12 @@ export const matchingService = {
       }
 
       // Criar convocações
-      const convocations = selectedProfessionals.map(professional => ({
+      const convocations = selectedProfessionals.map((professional) => ({
         job_id: jobId,
         professional_id: professional.profile_id,
         company_id: job.company_id,
         status: 'pending',
-        acceptance_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hora para aceitar
+        acceptance_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hora
       }))
 
       const { data, error } = await supabase
@@ -144,10 +150,7 @@ export const matchingService = {
       }
 
       // Atualizar status da vaga para 'matching'
-      await supabase
-        .from('jobs')
-        .update({ status: 'matching' })
-        .eq('id', jobId)
+      await supabase.from('jobs').update({ status: 'matching' }).eq('id', jobId)
 
       return data
     } catch (error) {
@@ -179,12 +182,15 @@ export const matchingService = {
         throw new Error('Localização do profissional não definida')
       }
 
-      // Buscar vagas abertas      const { data: jobs, error: jobsError } = await supabase
-        .from(\'jobs\')
-        .select(\'*\')
-        .eq(\'status\', \'open\')
-        .in(\'required_skill\', professional.skills || [])
-        .limit(50) // Limitar o número de vagas retornadas inicialmentef (jobsError) {
+      // Buscar vagas abertas
+      const { data: jobs, error: jobsError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('status', 'open')
+        .in('required_skill', professional.skills || [])
+        .limit(50)
+
+      if (jobsError) {
         throw jobsError
       }
 
@@ -197,9 +203,9 @@ export const matchingService = {
       )
 
       // Adicionar score de compatibilidade
-      const scoredJobs = nearbyJobs.map(job => ({
+      const scoredJobs = nearbyJobs.map((job) => ({
         ...job,
-        matchScore: this.calculateJobMatchScore(job, professional)
+        matchScore: this.calculateJobMatchScore(job, professional),
       }))
 
       // Ordenar por score
@@ -219,28 +225,20 @@ export const matchingService = {
   calculateJobMatchScore(job, professional) {
     let score = 0
 
-    // Score base por ter a habilidade requerida
     if (professional.skills?.includes(job.required_skill)) {
       score += 50
     }
 
-    // Bonus por proximidade
     const maxDistance = 20 // km
-    const distanceScore = Math.max(0, (maxDistance - job.distance) / maxDistance * 30)
+    const distanceScore = Math.max(
+      0,
+      ((maxDistance - job.distance) / maxDistance) * 30
+    )
     score += distanceScore
 
-    // Bonus por valor da hora
-    if (job.hourly_rate >= 20) {
-      score += 10
-    }
-    if (job.hourly_rate >= 30) {
-      score += 5
-    }
-
-    // Bonus por duração (preferência por trabalhos mais longos)
-    if (job.duration_hours >= 6) {
-      score += 5
-    }
+    if (job.hourly_rate >= 20) score += 10
+    if (job.hourly_rate >= 30) score += 5
+    if (job.duration_hours >= 6) score += 5
 
     return Math.round(score)
   },
@@ -252,14 +250,9 @@ export const matchingService = {
    * @returns {Promise<Object>} Resultado do matching
    */
   async executeMatching(jobId, options = {}) {
-    const {
-      radiusKm = 10,
-      maxConvocations = 5,
-      minScore = 30
-    } = options
+    const { radiusKm = 10, maxConvocations = 5, minScore = 30 } = options
 
     try {
-      // Buscar dados da vaga
       const { data: job, error: jobError } = await supabase
         .from('jobs')
         .select('*')
@@ -270,25 +263,24 @@ export const matchingService = {
         throw jobError
       }
 
-      // Encontrar profissionais compatíveis
       const professionals = await this.findMatchingProfessionals(job, radiusKm)
-      
-      // Filtrar por score mínimo
-      const qualifiedProfessionals = professionals.filter(p => p.matchScore >= minScore)
+
+      const qualifiedProfessionals = professionals.filter(
+        (p) => p.matchScore >= minScore
+      )
 
       if (qualifiedProfessionals.length === 0) {
         return {
           success: false,
           message: 'Nenhum profissional qualificado encontrado',
           professionals: [],
-          convocations: []
+          convocations: [],
         }
       }
 
-      // Criar convocações
       const convocations = await this.createConvocations(
-        jobId, 
-        qualifiedProfessionals, 
+        jobId,
+        qualifiedProfessionals,
         maxConvocations
       )
 
@@ -296,7 +288,7 @@ export const matchingService = {
         success: true,
         message: `${convocations.length} convocações criadas`,
         professionals: qualifiedProfessionals,
-        convocations
+        convocations,
       }
     } catch (error) {
       console.error('Erro no processo de matching:', error)
@@ -304,8 +296,8 @@ export const matchingService = {
         success: false,
         message: error.message,
         professionals: [],
-        convocations: []
+        convocations: [],
       }
     }
-  }
+  },
 }
